@@ -189,6 +189,15 @@ describe.skipIf(!hasDb)('API', () => {
           headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...(key ? { authorization: `Bearer ${key}` } : {}) },
         }),
       );
+    // Streamable HTTP may answer with a JSON body or a one-event SSE stream; accept both.
+    const rpcBody = async <T,>(r: Response): Promise<T> => {
+      const text = await r.text();
+      if ((r.headers.get('content-type') ?? '').includes('text/event-stream')) {
+        const data = text.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).join('');
+        return JSON.parse(data) as T;
+      }
+      return JSON.parse(text) as T;
+    };
     const init = (key: string) => rpc(key, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' } });
 
     async function newKey(userId: string) {
@@ -212,15 +221,15 @@ describe.skipIf(!hasDb)('API', () => {
       as(null); // MCP calls carry only the key
       const i = await init(key);
       expect(i.status).toBe(200);
-      expect((await body<{ result: { serverInfo: { name: string } } }>(i)).result.serverInfo.name).toBe('aie600-course');
+      expect((await rpcBody<{ result: { serverInfo: { name: string } } }>(i)).result.serverInfo.name).toBe('aie600-course');
 
-      const list = await body<{ result: { tools: { name: string }[] } }>(await rpc(key, 'tools/list'));
+      const list = await rpcBody<{ result: { tools: { name: string }[] } }>(await rpc(key, 'tools/list'));
       expect(list.result.tools.map((t) => t.name).sort()).toEqual(['get_lab', 'get_missed_questions', 'get_my_progress', 'get_week_materials', 'list_weeks', 'read_section', 'search_course']);
 
-      const call = await body<{ result: { content: { text: string }[] } }>(await rpc(key, 'tools/call', { name: 'read_section', arguments: { week: 8, section: 0 } }));
+      const call = await rpcBody<{ result: { content: { text: string }[] } }>(await rpc(key, 'tools/call', { name: 'read_section', arguments: { week: 8, section: 0 } }));
       expect(call.result.content[0].text).toMatch(/^# Week 8 · 8\.1/);
 
-      const search = await body<{ result: { content: { text: string }[] } }>(await rpc(key, 'tools/call', { name: 'search_course', arguments: { query: 'KV cache memory' } }));
+      const search = await rpcBody<{ result: { content: { text: string }[] } }>(await rpc(key, 'tools/call', { name: 'search_course', arguments: { query: 'KV cache memory' } }));
       expect(JSON.parse(search.result.content[0].text).results[0].week).toBe(8);
 
       // listing and revoking via the session
@@ -237,7 +246,7 @@ describe.skipIf(!hasDb)('API', () => {
       const key = await newKey('user_r');
       await requireDb().query("UPDATE entitlements SET revoked_at = now() WHERE user_id = 'user_r'");
       as(null);
-      const call = await body<{ result: { content: { text: string }[] } }>(await rpc(key, 'tools/call', { name: 'read_section', arguments: { week: 8, section: 0 } }));
+      const call = await rpcBody<{ result: { content: { text: string }[] } }>(await rpc(key, 'tools/call', { name: 'read_section', arguments: { week: 8, section: 0 } }));
       expect(JSON.parse(call.result.content[0].text)).toMatchObject({ locked: true, week: 8 });
     });
   });

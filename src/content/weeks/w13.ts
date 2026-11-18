@@ -22,7 +22,7 @@ const week: Week = {
     hours: 30,
     stack: 'Your choice — recommended: Next.js + TypeScript + Postgres/pgvector + an LLM API, deployed on Vercel/Railway, with tracing',
     steps: [
-      'Pick a project (suggestions): (A) Maître voice/text ordering agent with menu RAG, modifiers, and POS submission; (B) Forklines exception-resolution agent with an MCP server over warehouse data; (C) A multi-tenant SOP/knowledge assistant with hybrid RAG; (D) A fine-tuned small model replacing a frontier model for a high-volume task with ≥ parity on your evals.',
+      'Pick a project (suggestions): (A) A restaurant voice/text ordering agent with menu RAG, modifiers, and POS submission; (B) A warehouse exception-resolution agent with an MCP server over inventory and order data; (C) A multi-tenant SOP/knowledge assistant with hybrid RAG; (D) A fine-tuned small model replacing a frontier model for a high-volume task with ≥ parity on your evals.',
       'Write a 2-page design doc: problem, users, requirements (quality, latency, cost, safety), architecture diagram, data, model choices, eval plan, risks.',
       'Build the eval suite FIRST (≥ 75 cases incl. adversarial), and baseline a simple version.',
       'Build the system iteratively; run evals after every significant change and keep a changelog of metric movements.',

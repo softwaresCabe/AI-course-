@@ -1,8 +1,9 @@
 // The course MCP server: the same tools the AI tutor uses, exposed over Streamable HTTP so students can
 // use the course from Claude Code, Claude Desktop or any MCP client while working on labs.
-// Stateless: a fresh server + transport per request, scoped to the API key's owner.
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+// Built on the v2 TypeScript SDK (@modelcontextprotocol/server), the same one Week 11 teaches.
+// Stateless: createMcpHandler builds a fresh server per request, scoped to the API key's owner, and
+// also serves 2025-era clients through its stateless legacy fallback.
+import { McpServer, createMcpHandler, type McpRequestContext } from '@modelcontextprotocol/server';
 import { courseTools } from './tools';
 import type { Viewer } from './viewer';
 
@@ -28,14 +29,16 @@ export function buildMcpServer(viewer: Viewer) {
   return server;
 }
 
-export async function handleMcp(req: Request, viewer: Viewer): Promise<Response> {
-  const server = buildMcpServer(viewer);
-  const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-  await server.connect(transport);
-  try {
-    return await transport.handleRequest(req);
-  } finally {
-    // JSON-response mode has finished writing by the time handleRequest resolves.
-    void server.close();
-  }
+const DENY: Viewer = { userId: null, signedIn: false, paid: false, admin: false, open: false, via: 'anonymous' };
+const viewerOf = (ctx: McpRequestContext) => (ctx.authInfo?.extra?.viewer as Viewer | undefined) ?? DENY;
+
+const handler = createMcpHandler((ctx) => buildMcpServer(viewerOf(ctx)), {
+  responseMode: 'json',
+  maxRequestBodySize: 256 * 1024,
+  onerror: (e) => console.error('mcp error', e.message),
+});
+
+/** Serve one MCP request as `viewer` (already authenticated by the route). */
+export function handleMcp(req: Request, viewer: Viewer): Promise<Response> {
+  return handler.fetch(req, { authInfo: { token: 'verified', clientId: viewer.userId ?? 'local', scopes: ['course:read'], extra: { viewer } } });
 }
