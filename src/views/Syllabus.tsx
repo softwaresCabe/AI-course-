@@ -1,9 +1,11 @@
-import { course, weeks, midterm, finalExam } from '../content/course';
+import { course } from '../content/meta';
+import { catalog } from '../content/catalog';
 import { go } from '../router';
 
 export function Syllabus() {
+  const { weeks, exams } = catalog();
   const totalHours = weeks.reduce((s, w) => s + w.hours, 0);
-  const totalQ = weeks.reduce((s, w) => s + w.quiz.length, 0) + midterm.questions.length + finalExam.questions.length;
+  const totalQ = weeks.reduce((s, w) => s + w.quiz.count, 0) + exams.midterm.questionCount + exams.final.questionCount;
   return (
     <div className="space-y-8">
       <header>

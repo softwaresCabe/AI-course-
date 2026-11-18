@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
-import { weeks, reviewPool } from '../content/course';
+import { catalogWeek } from '../content/catalog';
 import type { Week } from '../content/types';
+import { useContent, usePlatform } from '../lib/platform';
+import { Paywall } from '../components/Paywall';
 import { useStore } from '../lib/store';
 import { Markdown, Inline } from '../components/Markdown';
 import { QuizRunner } from '../components/QuizRunner';
@@ -9,11 +11,15 @@ import { bestQuiz, weekProgress, labPct } from '../lib/scores';
 import { shuffle } from '../lib/grading';
 import { go } from '../router';
 
-const TABS = ['Lecture', 'Lab', 'Readings', 'Checklist', 'Review', 'Quiz', 'Ask TA'] as const;
+const TABS = ['Lecture', 'Lab', 'Readings', 'Checklist', 'Review', 'Quiz', 'AI tutor'] as const;
 type Tab = (typeof TABS)[number];
 
 export function WeekPage({ n }: { n: number }) {
-  const week = weeks.find((w) => w.n === n)!;
+  const meta = catalogWeek(n)!;
+  const { content, me } = usePlatform();
+  // Re-request when entitlements change (sign-in, purchase).
+  const state = useContent(() => content.week(n), [n, me?.signedIn, me?.paid]);
+  const week = state.data;
   const [tab, setTab] = useState<Tab>('Lecture');
   const { p } = useStore();
   const prog = weekProgress(p, n);
@@ -22,22 +28,48 @@ export function WeekPage({ n }: { n: number }) {
     <div>
       <header className="mb-5">
         <div className="kicker">
-          Week {week.n} · Phase {week.phase} · ~{week.hours} hrs
+          Week {meta.n} · Phase {meta.phase} · ~{meta.hours} hrs
         </div>
-        <h1 className="mt-1 font-serif text-3xl font-bold leading-tight sm:text-4xl">{week.title}</h1>
-        <p className="mt-2 text-ink-soft">{week.tagline}</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold leading-tight sm:text-4xl">{meta.title}</h1>
+        <p className="mt-2 text-ink-soft">{meta.tagline}</p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           <span className="chip bg-paper-line">
-            Read {prog.read}/{week.sections.length}
+            Read {prog.read}/{meta.sectionHeadings.length}
           </span>
           <span className="chip bg-paper-line">
-            Checklist {prog.checks}/{week.checklist.length}
+            Checklist {prog.checks}/{meta.checklist.length}
           </span>
           <span className={`chip ${prog.mastered ? 'bg-emerald-100 text-emerald-800' : 'bg-paper-line'}`}>Quiz {prog.quiz === null ? '—' : Math.round(prog.quiz) + '%'}</span>
           <span className={`chip ${prog.lab ? 'bg-emerald-100 text-emerald-800' : 'bg-paper-line'}`}>{n === 13 ? 'Capstone' : 'Lab'} {prog.lab ? 'submitted' : 'open'}</span>
         </div>
       </header>
 
+      {state.locked && (
+        <div className="space-y-6">
+          <Paywall reason={state.locked} what={`Week ${n}`} />
+          <section className="card p-5">
+            <div className="kicker mb-2">What you’ll learn</div>
+            <ul className="list-disc space-y-1 pl-5 text-sm">
+              {meta.objectives.map((o) => (
+                <li key={o}>{o}</li>
+              ))}
+            </ul>
+            <div className="kicker mb-2 mt-5">Lecture outline</div>
+            <ol className="space-y-1 text-sm text-ink-soft">
+              {meta.sectionHeadings.map((h) => (
+                <li key={h}>{h}</li>
+              ))}
+            </ol>
+            <div className="mt-5 text-sm text-ink-soft">
+              <span className="font-medium text-ink">{meta.lab.title}</span> · ~{meta.lab.hours} hrs · graded quiz ({meta.quiz.count} questions)
+            </div>
+          </section>
+        </div>
+      )}
+      {state.loading && <div className="card animate-pulse p-8 text-sm text-ink-mute">Loading Week {n}…</div>}
+      {state.error && <div className="card p-5 text-sm text-red-700">Couldn’t load this week. Check your connection and reload.</div>}
+
+      {week && (<>
       <nav className="-mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-paper-line px-4">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition ${tab === t ? 'border-brand text-brand' : 'border-transparent text-ink-mute hover:text-ink'}`}>
@@ -52,7 +84,8 @@ export function WeekPage({ n }: { n: number }) {
       {tab === 'Checklist' && <Checklist week={week} />}
       {tab === 'Review' && <Review week={week} />}
       {tab === 'Quiz' && <WeekQuiz week={week} />}
-      {tab === 'Ask TA' && <TutorChat week={week} />}
+      {tab === 'AI tutor' && <TutorChat week={week} />}
+      </>)}
 
       <div className="mt-10 flex justify-between border-t border-paper-line pt-4 text-sm">
         {n > 1 ? (
@@ -271,7 +304,9 @@ function Review({ week }: { week: Week }) {
   const { p, update } = useStore();
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   const [session, setSession] = useState(0);
-  const pool = useMemo(() => reviewPool(week.n), [week.n]);
+  const { content } = usePlatform();
+  const poolState = useContent(() => (week.n > 1 ? content.review(week.n) : Promise.resolve([])), [week.n]);
+  const pool = useMemo(() => poolState.data ?? [], [poolState.data]);
   const picks = useMemo(() => {
     // Spaced retrieval: weight questions you've missed and older weeks you haven't revisited.
     const scored = pool.map(({ week: wn, q }) => {
@@ -302,6 +337,10 @@ function Review({ week }: { week: Week }) {
         <h2 className="font-serif text-2xl font-semibold">Spaced review</h2>
         {week.n === 1 ? (
           <p className="text-sm text-ink-mute">Spaced review starts in Week 2 — it pulls questions from earlier weeks, prioritizing ones you missed.</p>
+        ) : poolState.loading ? (
+          <p className="text-sm text-ink-mute">Loading review questions…</p>
+        ) : !picks.length ? (
+          <p className="text-sm text-ink-mute">Review questions couldn’t be loaded right now.</p>
         ) : (
           <>
             <p className="mb-4 text-sm text-ink-mute">8 questions from Weeks 1–{week.n - 1}, weighted toward ones you’ve missed. Not graded — it trains retention.</p>

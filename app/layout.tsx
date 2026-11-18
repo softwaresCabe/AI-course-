@@ -1,15 +1,18 @@
 import type { Metadata, Viewport } from 'next';
+import { ClerkProvider } from '@clerk/nextjs';
 import '../src/index.css';
 
 export const metadata: Metadata = {
-  title: 'AI Engineering — A 13-Week University-Level Course',
-  description: 'AIE 600: lectures, labs, graded quizzes and exams, checklists, spaced review and an AI TA.',
+  title: 'AIE 600 — AI Engineering: From First Principles to Production',
+  description: 'A 13-week, graduate-level AI engineering course: lectures, labs, graded quizzes and exams, spaced review and an AI tutor. Start free.',
 };
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
+const clerkEnabled = !!(process.env.CLERK_SECRET_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
+  const html = (
     <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -23,4 +26,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>{children}</body>
     </html>
   );
+  return clerkEnabled ? <ClerkProvider>{html}</ClerkProvider> : html;
 }

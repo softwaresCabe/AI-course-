@@ -1,4 +1,4 @@
-import { futurePaths } from '../content/course';
+import { futurePaths } from '../content/future';
 
 export function FuturePage() {
   return (

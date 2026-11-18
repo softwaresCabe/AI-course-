@@ -58,6 +58,7 @@ export function parseNumber(s: string): number {
     t = t.slice(0, -1);
   }
   t = t.replace(/×10\^?/, 'e').replace(/x10\^?/, 'e');
+  if (!t) return NaN; // Number('') is 0 — a blank answer must never match a key of 0
   const n = Number(t);
   return Number.isFinite(n) ? n * mult : NaN;
 }

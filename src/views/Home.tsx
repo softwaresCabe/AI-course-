@@ -1,9 +1,10 @@
-import { course, weeks } from '../content/course';
+import { course } from '../content/meta';
+import { catalog } from '../content/catalog';
 import { useStore } from '../lib/store';
 import { courseGrade, weekProgress } from '../lib/scores';
 import { go } from '../router';
 
-export function weekDates(start: string | undefined, n: number) {
+function weekDates(start: string | undefined, n: number) {
   if (!start) return null;
   const d = new Date(start + 'T00:00:00');
   const s = new Date(d.getTime() + (n - 1) * 7 * 86400000);
@@ -13,6 +14,7 @@ export function weekDates(start: string | undefined, n: number) {
 }
 
 export function Home() {
+  const weeks = catalog().weeks;
   const { p, update } = useStore();
   const g = courseGrade(p);
   const progress = weeks.map((w) => weekProgress(p, w.n));

@@ -1,6 +1,9 @@
-import { weeks, course, midterm, finalExam } from '../content/course';
+import { course } from '../content/meta';
+import { catalog } from '../content/catalog';
 import type { Progress } from './store';
-import { letterFor, pointsOf } from './grading';
+import { letterFor } from './grading';
+
+const weeksOf = () => catalog().weeks;
 
 export function bestQuiz(p: Progress, n: number) {
   const atts = p.quizzes['w' + n] ?? [];
@@ -16,7 +19,7 @@ export function quizPct(p: Progress, n: number): number | null {
 export function labPct(p: Progress, n: number): number | null {
   const rec = p.labs['w' + n];
   if (!rec?.submitted) return null;
-  const w = weeks.find((x) => x.n === n)!;
+  const w = weeksOf().find((x) => x.n === n)!;
   const max = w.lab.rubric.reduce((s, r) => s + r.points, 0);
   const got = rec.rubric.reduce((s, x) => s + (x || 0), 0);
   return (100 * got) / max;
@@ -28,16 +31,16 @@ export function examPct(p: Progress, id: 'midterm' | 'final'): number | null {
 }
 
 export function examMax(id: 'midterm' | 'final') {
-  return (id === 'midterm' ? midterm : finalExam).questions.reduce((s, q) => s + pointsOf(q), 0);
+  return catalog().exams[id].maxPoints;
 }
 
 export function weekProgress(p: Progress, n: number) {
-  const w = weeks.find((x) => x.n === n)!;
-  const read = w.sections.filter((_, i) => p.read[`w${n}-s${i}`]).length;
+  const w = weeksOf().find((x) => x.n === n)!;
+  const read = w.sectionHeadings.filter((_, i) => p.read[`w${n}-s${i}`]).length;
   const checks = w.checklist.filter((_, i) => p.checklist[`w${n}-c${i}`]).length;
   const q = quizPct(p, n);
   const lab = p.labs['w' + n]?.submitted ? 1 : 0;
-  const parts = [read / w.sections.length, checks / w.checklist.length, q === null ? 0 : Math.min(1, q / 80), lab];
+  const parts = [read / w.sectionHeadings.length, checks / w.checklist.length, q === null ? 0 : Math.min(1, q / 80), lab];
   return { read, checks, quiz: q, lab: !!lab, pct: Math.round((100 * parts.reduce((s, x) => s + x, 0)) / parts.length), mastered: q !== null && q >= 80 };
 }
 
@@ -45,6 +48,7 @@ export function weekProgress(p: Progress, n: number) {
  * running: each component averaged over the work completed so far (what you're "on track" for).
  * final: missing work counts as zero. */
 export function courseGrade(p: Progress) {
+  const weeks = weeksOf();
   const quizzes = weeks.map((w) => quizPct(p, w.n)).filter((x): x is number => x !== null);
   const labs = weeks.filter((w) => w.n < 13).map((w) => labPct(p, w.n)).filter((x): x is number => x !== null);
   const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
@@ -79,6 +83,7 @@ export function courseGrade(p: Progress) {
 }
 
 export function certificateStatus(p: Progress) {
+  const weeks = weeksOf();
   const g = courseGrade(p);
   const allQuizzes = weeks.every((w) => (quizPct(p, w.n) ?? 0) >= 80);
   return {

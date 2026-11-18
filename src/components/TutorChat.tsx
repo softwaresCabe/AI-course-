@@ -1,87 +1,102 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Week } from '../content/types';
-import { aiAvailable, askText } from '../lib/runtime';
+import { usePlatform, type ChatMsg } from '../lib/platform';
+import { formatTokens } from '../lib/format';
 import { PlainText } from './Markdown';
+import { BuyButton } from './Paywall';
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type Turn = ChatMsg & { activity?: string[]; charged?: number };
 
-/** "Office hours" — an AI teaching assistant grounded in this week's lecture. */
+/** The AI tutor: an agent that can look things up in the course (lectures, labs, your progress) to get you unstuck. */
 export function TutorChat({ week }: { week: Week }) {
-  const [available, setAvailable] = useState<boolean | null>(null);
-  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const { ai, me, auth, refreshMe } = usePlatform();
+  const [msgs, setMsgs] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<{ code: string; message: string } | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    aiAvailable().then(setAvailable);
-  }, []);
-
-  useEffect(() => {
-    setMsgs([]);
-    setErr(null);
-  }, [week.n]);
-
-  const system = `You are the teaching assistant for "AIE 600: AI Engineering", a graduate-level course. The student is a professional software engineer (TypeScript/Next.js/Postgres background, ex-warehouse-systems engineer) studying Week ${week.n}: ${week.title}.
-
-Teaching style: Socratic when the student is working on a problem (give hints before full solutions, especially for lab and quiz questions — do not give away quiz answers outright); direct and precise when they ask for an explanation. Use concrete examples, small worked numbers and short code (Python or TypeScript) where helpful. Correct misconceptions clearly. If something is outside the lecture, you may use general knowledge but say when a detail may have changed recently. Keep answers under ~250 words unless asked for more. Plain text only (no markdown headings).
-
-THIS WEEK'S LECTURE NOTES:
-${week.sections.map((s) => `## ${s.heading}\n${s.body}`).join('\n\n').slice(0, 24000)}`;
+  const tokens = me?.tokens ?? null;
+  const outOfTokens = (tokens !== null && tokens.balance <= 0) || err?.code === 'insufficient_tokens';
+  const packs = me?.products.filter((p) => p.kind === 'tokens') ?? [];
 
   async function send(text: string) {
     if (!text.trim() || busy) return;
-    const history: Msg[] = [...msgs, { role: 'user', content: text.trim() }];
-    setMsgs([...history, { role: 'assistant', content: '' }]);
+    const history: Turn[] = [...msgs, { role: 'user', content: text.trim() }];
+    setMsgs([...history, { role: 'assistant', content: '', activity: [] }]);
     setInput('');
     setBusy(true);
     setErr(null);
     abort.current = new AbortController();
+    const patchLast = (fn: (t: Turn) => Turn) => setMsgs((m) => [...m.slice(0, -1), fn(m[m.length - 1])]);
     try {
-      const convo: Msg[] = [{ role: 'user', content: system + '\n\n---\nStudent: ' + history[0].content }, ...history.slice(1)];
-      const out = await askText(convo, (t) => setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: t }]), abort.current.signal);
-      if (out === null) {
-        setAvailable(false);
-        setMsgs(history);
-      }
-    } catch (e: unknown) {
-      const code = (e as { code?: string })?.code;
-      setErr(code === 'rate_limited' ? 'The TA is busy (rate limited). Try again in a minute.' : code === 'not_granted' ? 'AI access was not granted for this page.' : 'Something went wrong. Try again.');
-      if (code === 'not_granted') setAvailable(false);
-      setMsgs((m) => (m[m.length - 1]?.content ? m : m.slice(0, -1)));
+      await ai.tutor(
+        week,
+        history.map(({ role, content }) => ({ role, content })),
+        (e) => {
+          if (e.type === 'text') patchLast((t) => ({ ...t, content: t.content + e.text }));
+          else if (e.type === 'tool') patchLast((t) => ({ ...t, activity: [...(t.activity ?? []), e.label] }));
+          else if (e.type === 'usage') patchLast((t) => ({ ...t, charged: e.charged }));
+          else if (e.type === 'error') setErr({ code: e.code, message: e.message });
+        },
+        abort.current.signal,
+      );
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') setErr({ code: 'error', message: 'Something went wrong. Try again.' });
     } finally {
+      // Drop an empty assistant bubble (error before any text).
+      setMsgs((m) => (m[m.length - 1]?.role === 'assistant' && !m[m.length - 1].content ? m.slice(0, -1) : m));
       setBusy(false);
+      if (me?.tokens) void refreshMe();
     }
   }
 
-  if (available === false)
+  if (me && !me.features.ai)
+    return <div className="card p-4 text-sm text-ink-soft">The AI tutor isn’t enabled on this deployment. Use the flashcards and quiz explanations in the meantime.</div>;
+
+  if (me && !me.signedIn)
     return (
-      <div className="card p-4 text-sm text-ink-soft">
-        The AI TA runs when this course is opened as a Claude artifact, or when the Next.js app is deployed with ANTHROPIC_API_KEY set. Until then, use the flashcards and quiz explanations.
+      <div className="card p-5 text-sm text-ink-soft">
+        <div className="font-semibold text-ink">AI tutor</div>
+        <p className="mt-1">Stuck on a concept or a lab step? The tutor reads the course material and your progress, then walks you through it — hints first, answers when you need them. Free accounts include starter tokens.</p>
+        <button className="btn-primary mt-3" onClick={auth.signIn} disabled={!auth.enabled}>
+          Sign in to use the tutor
+        </button>
       </div>
     );
 
-  const starters = [`Explain ${week.sections[1]?.heading.replace(/^\d+\.\d+\s*/, '') ?? 'the key idea'} with a worked example`, 'Quiz me with 3 harder questions on this week', 'What do interviewers ask about this topic?', 'I’m stuck on the lab — give me a hint'];
+  const starters = [
+    `Explain ${week.sections[1]?.heading.replace(/^\d+\.\d+\s*/, '') ?? 'the key idea'} with a worked example`,
+    'Look at my progress — what should I review this week?',
+    'I’m stuck on the lab — give me a hint for the next step',
+    'What do interviewers ask about this topic?',
+  ];
 
   return (
     <div className="card flex flex-col p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="kicker">Office hours</div>
-          <div className="font-semibold">Ask the AI TA about Week {week.n}</div>
+          <div className="font-semibold">Ask the AI tutor about Week {week.n}</div>
         </div>
-        {msgs.length > 0 && (
-          <button className="text-xs text-ink-mute underline" onClick={() => setMsgs([])}>
-            Clear
-          </button>
-        )}
+        <div className="flex items-center gap-3 text-xs text-ink-mute">
+          {tokens && (
+            <span title="AI tutor token balance">
+              <span className="font-mono">{formatTokens(tokens.balance)}</span> tokens left
+            </span>
+          )}
+          {msgs.length > 0 && !busy && (
+            <button className="underline" onClick={() => setMsgs([])}>
+              Clear
+            </button>
+          )}
+        </div>
       </div>
-      <div className="max-h-[28rem] space-y-3 overflow-y-auto">
+      <div className="max-h-[32rem] space-y-3 overflow-y-auto" aria-live="polite">
         {msgs.length === 0 && (
           <div className="flex flex-wrap gap-2">
             {starters.map((s) => (
-              <button key={s} className="btn-ghost !px-3 !py-1.5 text-left text-xs" disabled={available === null} onClick={() => send(s)}>
+              <button key={s} className="btn-ghost !px-3 !py-1.5 text-left text-xs" disabled={!me || outOfTokens} onClick={() => send(s)}>
                 {s}
               </button>
             ))}
@@ -89,11 +104,30 @@ ${week.sections.map((s) => `## ${s.heading}\n${s.body}`).join('\n\n').slice(0, 2
         )}
         {msgs.map((m, i) => (
           <div key={i} className={m.role === 'user' ? 'ml-8 rounded-lg bg-brand-soft/60 p-3 text-sm' : 'mr-4 rounded-lg bg-paper p-3'}>
+            {m.activity && m.activity.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1">
+                {m.activity.map((a, j) => (
+                  <span key={j} className="chip bg-paper-line text-[0.7rem] text-ink-mute">
+                    {a}
+                  </span>
+                ))}
+              </div>
+            )}
             {m.role === 'assistant' && !m.content ? <span className="text-sm text-ink-mute">Thinking…</span> : <PlainText text={m.content} />}
+            {m.charged !== undefined && m.charged > 0 && <div className="mt-1 text-right text-[0.7rem] text-ink-mute">{formatTokens(m.charged)} tokens</div>}
           </div>
         ))}
       </div>
-      {err && <div className="mt-2 text-sm text-red-700">{err}</div>}
+      {err && !outOfTokens && <div className="mt-2 text-sm text-red-700">{err.message}</div>}
+      {outOfTokens && (
+        <div className="mt-3 rounded-lg border border-brand/30 bg-brand-soft/30 p-3 text-sm">
+          <div className="font-medium">You’re out of tutor tokens.</div>
+          <div className="mt-1 text-ink-soft">Top up to keep going — tokens never expire.</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {packs.length ? packs.map((p) => <BuyButton key={p.id} product={p} />) : <span className="text-ink-mute">Token packs aren’t available on this deployment.</span>}
+          </div>
+        </div>
+      )}
       <form
         className="mt-3 flex gap-2"
         onSubmit={(e) => {
@@ -101,17 +135,18 @@ ${week.sections.map((s) => `## ${s.heading}\n${s.body}`).join('\n\n').slice(0, 2
           send(input);
         }}
       >
-        <input className="input" placeholder="Ask a question…" value={input} onChange={(e) => setInput(e.target.value)} disabled={busy} />
+        <input className="input" placeholder="Ask a question…" value={input} maxLength={4000} onChange={(e) => setInput(e.target.value)} disabled={busy || outOfTokens} aria-label="Ask the AI tutor" />
         {busy ? (
           <button type="button" className="btn-ghost" onClick={() => abort.current?.abort()}>
             Stop
           </button>
         ) : (
-          <button className="btn-primary" disabled={!input.trim() || available === null}>
+          <button className="btn-primary" disabled={!input.trim() || !me || outOfTokens}>
             Ask
           </button>
         )}
       </form>
+      <p className="mt-2 text-[0.7rem] text-ink-mute">The tutor won’t give away quiz answers and isn’t available during exams. It can make mistakes — check important details against the lecture.</p>
     </div>
   );
 }
