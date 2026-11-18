@@ -14,6 +14,7 @@ import { weekProgress } from './lib/scores';
 import { PlatformProvider, usePlatform, type AuthState, type Backend } from './lib/platform';
 import { canAccess } from './lib/access';
 import { formatTokens } from './lib/format';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const NO_AUTH: AuthState = { enabled: false, loaded: true, signedIn: false, userId: null, signIn() {}, signOut() {} };
 
@@ -133,7 +134,9 @@ function Shell() {
           {Side}
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 lg:px-12 lg:py-10">
-          <div className="mx-auto max-w-3xl">{page}</div>
+          <div className="mx-auto max-w-3xl">
+            <ErrorBoundary resetKey={route}>{page}</ErrorBoundary>
+          </div>
           <footer className="mx-auto mt-16 max-w-3xl border-t border-paper-line pt-4 text-xs text-ink-mute">
             Course content reviewed for technical accuracy as of November 2026. Fast-moving details (specific products, SDK method names, benchmarks) change — verify against current docs.
           </footer>
