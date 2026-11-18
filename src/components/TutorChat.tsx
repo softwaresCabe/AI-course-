@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Week } from '../content/types';
-import { askText, getCapability } from '../lib/runtime';
+import { aiAvailable, askText } from '../lib/runtime';
 import { PlainText } from './Markdown';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
@@ -15,7 +15,7 @@ export function TutorChat({ week }: { week: Week }) {
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    getCapability('sample').then((s) => setAvailable(!!s));
+    aiAvailable().then(setAvailable);
   }, []);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ ${week.sections.map((s) => `## ${s.heading}\n${s.body}`).join('\n\n').slice(0, 2
   if (available === false)
     return (
       <div className="card p-4 text-sm text-ink-soft">
-        The AI TA runs when this course is opened as a Claude artifact. Here, use the flashcards and quiz explanations — or paste a question into Claude with this week’s topic.
+        The AI TA runs when this course is opened as a Claude artifact, or when the Next.js app is deployed with ANTHROPIC_API_KEY set. Until then, use the flashcards and quiz explanations.
       </div>
     );
 

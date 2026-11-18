@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { serverHealth, serverToken, setServerToken } from '../lib/runtime';
 import { course, weeks } from '../content/course';
 import { useStore, type Progress } from '../lib/store';
 import { certificateStatus, courseGrade, examPct, labPct, quizPct, weekProgress } from '../lib/scores';
@@ -10,6 +11,11 @@ export function Gradebook() {
   const cert = certificateStatus(p);
   const [io, setIo] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
+  const [needsToken, setNeedsToken] = useState(false);
+  const [token, setToken] = useState(serverToken());
+  useEffect(() => {
+    serverHealth().then((h) => setNeedsToken(!!h?.auth));
+  }, []);
   const fmt = (x: number | null) => (x === null ? '—' : `${Math.round(x)}%`);
 
   return (
@@ -122,7 +128,7 @@ export function Gradebook() {
         <div className="kicker mb-1">Backup & transfer</div>
         <p className="mb-3 text-sm text-ink-mute">
           {sync === 'synced' || sync === 'saving'
-            ? 'Your progress syncs to your Claude account automatically, so it follows you across devices.'
+            ? 'Your progress syncs automatically (Claude account or the course database), so it follows you across devices.'
             : 'Progress is saved in this browser. Copy a backup to move it to another device.'}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -158,6 +164,16 @@ export function Gradebook() {
         </div>
         <textarea className="input mt-3 h-20 font-mono text-xs" placeholder="Paste a backup here to restore" value={io} onChange={(e) => setIo(e.target.value)} />
         {msg && <div className="mt-2 text-sm text-ink-soft">{msg}</div>}
+        {needsToken && (
+          <div className="mt-4 border-t border-paper-line pt-4">
+            <div className="mb-1 text-sm font-medium">Server access token</div>
+            <p className="mb-2 text-xs text-ink-mute">This deployment requires COURSE_ACCESS_TOKEN for sync and the AI TA. Enter it once per device, then reload.</p>
+            <div className="flex gap-2">
+              <input className="input font-mono" type="password" value={token} onChange={(e) => setToken(e.target.value)} />
+              <button className="btn-ghost" onClick={() => { setServerToken(token); location.reload(); }}>Save</button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

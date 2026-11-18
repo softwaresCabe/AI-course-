@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w08.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -16,7 +16,7 @@ const week: Week = {
     'Evaluate quantization and speculative decoding trade-offs',
     'Choose between API, hosted open-weight and self-hosted serving by latency, cost and governance',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w08),
   lab: {
     title: 'Lab 8 — Serve, benchmark and quantize an open model',
     goal: 'Stand up an OpenAI-compatible inference server, load-test it, and measure the effect of quantization and batching.',

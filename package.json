@@ -1,21 +1,30 @@
 {
-  "name": "ai-eng-course",
+  "name": "ai-engineering-course",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "content": "node scripts/gen-lectures.mjs",
+    "dev": "npm run content && next dev",
+    "build": "npm run content && next build",
+    "start": "next start",
+    "db:init": "psql \"$DATABASE_URL\" -f db/schema.sql",
+    "dev:artifact": "npm run content && vite",
+    "build:artifact": "npm run content && tsc -b && vite build",
+    "typecheck": "tsc -b && tsc -p tsconfig.next.json --noEmit",
+    "lint": "oxlint src app"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
     "marked": "^18.2.1",
+    "next": "^16.4.6",
+    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",

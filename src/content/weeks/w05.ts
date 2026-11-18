@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w05.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -15,7 +15,7 @@ const week: Week = {
     'Explain MQA/GQA, Mixture-of-Experts and RoPE',
     'Implement and train a small GPT that generates coherent text',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w05),
   lab: {
     title: 'Lab 5 — nanoGPT from scratch',
     goal: 'Implement a decoder-only transformer in PyTorch, train it on a small corpus, and generate text.',

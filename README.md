@@ -17,35 +17,38 @@ A 13-week (~3-month), graduate-level course in how modern AI systems work and ho
 
 ## Stack
 
-React + TypeScript + Tailwind CSS, built with Vite into a **single self-contained HTML file** (`vite-plugin-singlefile`) so the whole course runs as one shareable page with no server. All course material is plain typed data in `src/content/` (markdown lecture files + TypeScript modules), so it drops straight into a Next.js app or a Postgres seed.
+**Next.js 16 (App Router) + TypeScript + Tailwind CSS + Postgres**, with the Anthropic SDK for the AI teaching assistant.
+
+| Piece | What it does |
+|---|---|
+| `app/` | Next.js app: the course UI (client component) plus API routes |
+| `app/api/progress` | Saves/loads your progress as JSONB in Postgres (`db/schema.sql`) |
+| `app/api/ai` | AI TA chat (streamed) and rubric grading of written answers via the Anthropic API |
+| `app/api/health` | Tells the UI which server features are configured |
+| `src/content/` | All course material as typed data: `weeks/wNN.md` lectures + `weeks/wNN.ts` (objectives, lab, readings, checklist, flashcards, quiz), `exams.ts`, `future.ts`, `course.ts` |
+| `src/lib/` | Auto-grading (MC, partial-credit select-all, numeric tolerance), gradebook math, progress store |
+| `src/views/`, `src/components/` | Pages and UI (QuizRunner, TutorChat, Markdown) |
+
+Every server feature is optional: with no `DATABASE_URL`, progress stays in the browser; with no `ANTHROPIC_API_KEY`, written answers are self-graded against the model answer and rubric.
 
 ```
-src/
-  content/
-    types.ts          # content model (Week, Lab, Question, Exam…)
-    weeks/wNN.md      # lecture notes
-    weeks/wNN.ts      # objectives, lab, readings, checklist, flashcards, quiz
-    exams.ts          # midterm + final
-    future.ts         # future-of-AI paths
-    course.ts         # syllabus, grading weights, policies
-  lib/
-    grading.ts        # auto-grading (MC, partial-credit multi-select, numeric tolerance)
-    store.tsx         # progress state: localStorage + optional account sync
-    runtime.ts        # optional Claude artifact runtime (AI TA, AI grading, sync)
-    scores.ts         # gradebook math
-  components/         # QuizRunner, TutorChat, Markdown
-  pages/              # Home, WeekPage, ExamPage, Gradebook, Syllabus, FuturePage
+src/content/weeks/wNN.md  ──(npm run content)──▶  lectures.generated.ts  ──▶  Next.js app / artifact build
 ```
 
 ## Run it
 
 ```bash
 npm install
-npm run dev      # local dev server
-npm run build    # → dist/index.html (single file)
+cp .env.example .env.local          # fill in DATABASE_URL and ANTHROPIC_API_KEY (both optional)
+npm run db:init                     # creates the course_progress table
+npm run dev                         # http://localhost:3000
 ```
 
-Progress is saved in your browser. When opened as a Claude artifact, progress also syncs to your account and the AI TA / AI grading light up; elsewhere the app falls back to self-grading.
+Deploy: push to GitHub → import into **Vercel** → add the env vars (use a Railway/Neon Postgres for `DATABASE_URL`) → set `COURSE_ACCESS_TOKEN` and enter it once in the Gradebook on each device.
+
+### Single-file build (Claude artifact)
+
+`npm run build:artifact` uses Vite to emit `dist/index.html`, the whole course as one self-contained page. When opened as a Claude artifact it uses the artifact runtime for sync and the AI TA instead of the API routes.
 
 ## Academic honesty
 

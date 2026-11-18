@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w13.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -15,7 +15,7 @@ const week: Week = {
     'Prepare for coding, fundamentals, AI system design and behavioral interviews',
     'Build a sustainable system for staying current',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w13),
   lab: {
     title: 'Capstone — A production-grade AI feature in one of your products',
     goal: 'Design, build, evaluate and present an AI system that would survive real customers. This is your portfolio flagship.',

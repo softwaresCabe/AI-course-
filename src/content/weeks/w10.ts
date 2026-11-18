@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w10.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -16,7 +16,7 @@ const week: Week = {
     'Evaluate retrieval (Recall@k, MRR, nDCG) and generation (faithfulness, correctness) separately',
     'Enforce multi-tenant isolation in retrieval',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w10),
   lab: {
     title: 'Lab 10 — Multi-tenant RAG on Postgres + pgvector',
     goal: 'Build a "knowledge assistant" for restaurant/warehouse SOPs with hybrid retrieval, reranking, citations, tenant isolation and a measured eval.',

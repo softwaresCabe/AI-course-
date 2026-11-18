@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w02.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -15,7 +15,7 @@ const week: Week = {
     'Design leak-free train/validation/test splits',
     'Select metrics (precision, recall, F1, AUC, calibration) from the cost of errors',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w02),
   lab: {
     title: 'Lab 2 — Logistic regression from scratch vs scikit-learn',
     goal: 'Implement a full training loop with no ML library, then validate it against scikit-learn and a gradient-boosted baseline on a real tabular dataset.',

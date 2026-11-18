@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w11.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -15,7 +15,7 @@ const week: Week = {
     'Build and connect an MCP server in TypeScript',
     'Evaluate agents with task success, pass^k and cost metrics, and secure them',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w11),
   lab: {
     title: 'Lab 11 — An ops agent with an MCP server',
     goal: 'Build an MCP server exposing your warehouse or restaurant data and an agent that uses it to resolve operational tickets end-to-end, with evals.',

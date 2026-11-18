@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w07.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -16,7 +16,7 @@ const week: Week = {
     'Fine-tune an open-weight model with LoRA/QLoRA and evaluate it honestly',
     'Decide between prompting, RAG and fine-tuning for a product requirement',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w07),
   lab: {
     title: 'Lab 7 — LoRA fine-tune + DPO on an open model',
     goal: 'Fine-tune a small open-weight instruct model (~0.5–3B) for a domain task, then preference-tune it, with a real before/after evaluation.',

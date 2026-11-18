@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w04.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -14,7 +14,7 @@ const week: Week = {
     'Describe n-gram, neural and recurrent language models and their limits',
     'Compute scaled dot-product attention with a causal mask by hand and in code',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w04),
   lab: {
     title: 'Lab 4 — Tokenizer + bigram/MLP language model + attention by hand',
     goal: 'Build the front half of an LLM: a BPE tokenizer, a baseline language model, and a single attention head you verify numerically.',

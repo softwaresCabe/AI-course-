@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w09.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -15,7 +15,7 @@ const week: Week = {
     'Design tools with good descriptions, scoped permissions and model-friendly results',
     'Apply context-engineering and reliability patterns in production',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w09),
   lab: {
     title: 'Lab 9 — A tool-using order assistant in Next.js',
     goal: 'Build a Next.js API route that turns free-text customer messages into validated orders using tool calls against a Postgres menu/inventory, with streaming UI.',

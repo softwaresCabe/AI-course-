@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w01.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -15,7 +15,7 @@ const week: Week = {
     'Derive cross-entropy / negative log-likelihood as the training loss for classifiers and LLMs',
     'Implement a numerically stable softmax and compute perplexity',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w01),
   lab: {
     title: 'Lab 1 — NumPy from first principles',
     goal: 'Build the numerical toolkit you will reuse all course: stable softmax, cross-entropy, a linear layer, and a numerical gradient checker.',

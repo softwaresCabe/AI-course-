@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { StoreProvider, useStore } from './lib/store';
 import { useRoute, go } from './router';
 import { weeks } from './content/course';
-import { Home } from './pages/Home';
-import { WeekPage } from './pages/WeekPage';
-import { ExamPage } from './pages/ExamPage';
-import { Gradebook } from './pages/Gradebook';
-import { Syllabus } from './pages/Syllabus';
-import { FuturePage } from './pages/FuturePage';
+import { Home } from './views/Home';
+import { WeekPage } from './views/WeekPage';
+import { ExamPage } from './views/ExamPage';
+import { Gradebook } from './views/Gradebook';
+import { Syllabus } from './views/Syllabus';
+import { FuturePage } from './views/FuturePage';
 import { weekProgress } from './lib/scores';
 
 export default function App() {
@@ -113,7 +113,7 @@ function NavItem({ active, onClick, children }: { active: boolean; onClick: () =
 }
 
 function SyncBadge({ sync }: { sync: string }) {
-  const label = { local: 'Saved in this browser', connecting: 'Connecting…', synced: 'Synced to your account', saving: 'Saving…', error: 'Sync error — saved locally' }[sync] ?? sync;
+  const label = { local: 'Saved in this browser', connecting: 'Connecting…', synced: 'Progress synced', saving: 'Saving…', error: 'Sync error — saved locally' }[sync] ?? sync;
   const dot = sync === 'synced' ? 'bg-emerald-500' : sync === 'error' ? 'bg-red-500' : sync === 'saving' || sync === 'connecting' ? 'bg-amber-400' : 'bg-ink-mute';
   return (
     <div className="flex items-center gap-2 px-3 text-xs text-ink-mute">

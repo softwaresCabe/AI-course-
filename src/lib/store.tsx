@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { getCapability } from './runtime';
+import { getCapability, serverHealth, serverHeaders } from './runtime';
 
 export interface Attempt {
   date: string;
@@ -76,63 +76,20 @@ const StoreCtx = createContext<Ctx | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [p, setP] = useState<Progress>(loadLocal);
   const [sync, setSync] = useState<SyncState>('connecting');
-  const docRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  // A storage backend: the Claude artifact database, or the Next.js /api/progress route (Postgres).
+  const backend = useRef<{ get: () => Promise<Progress | null>; set: (d: Progress) => Promise<void> } | null>(null);
   const pending = useRef<Progress | null>(null);
   const writing = useRef(false);
   const timer = useRef<number | undefined>(undefined);
 
-  // Connect to the artifact database (per-person private doc) if available.
-  useEffect(() => {
-    let cancelled = false;
-    const giveUp = window.setTimeout(() => !cancelled && !docRef.current && setSync('local'), 12000);
-    (async () => {
-      const [db, user] = await Promise.all([getCapability('db'), getCapability('user')]);
-      if (cancelled) return;
-      if (!db || !user) {
-        setSync('local');
-        return;
-      }
-      try {
-        const id = await user.id();
-        const ref = db.collection('data/users/' + id).doc('progress');
-        docRef.current = ref;
-        const snap = await ref.get();
-        const remote = snap && (typeof snap.data === 'function' ? snap.data() : snap);
-        if (remote && remote.version === 1) {
-          setP((local) => {
-            const winner = (remote.updatedAt ?? '') > local.updatedAt ? { ...empty(), ...remote } : local;
-            saveLocal(winner);
-            if (winner === local && local.updatedAt > new Date(0).toISOString()) queueWrite(local);
-            return winner;
-          });
-        } else {
-          setP((local) => {
-            if (local.updatedAt > new Date(0).toISOString()) queueWrite(local);
-            return local;
-          });
-        }
-        setSync('synced');
-      } catch {
-        setSync('local');
-      } finally {
-        clearTimeout(giveUp);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      clearTimeout(giveUp);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const flush = useCallback(async () => {
-    if (writing.current || !pending.current || !docRef.current) return;
+    if (writing.current || !pending.current || !backend.current) return;
     writing.current = true;
     const data = pending.current;
     pending.current = null;
     setSync('saving');
     try {
-      await docRef.current.set(JSON.parse(JSON.stringify(data)));
+      await backend.current.set(JSON.parse(JSON.stringify(data)));
       setSync('synced');
     } catch {
       setSync('error');
@@ -150,6 +107,67 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [flush],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const giveUp = window.setTimeout(() => !cancelled && !backend.current && setSync('local'), 12000);
+    (async () => {
+      try {
+        const [db, user] = await Promise.all([getCapability('db'), getCapability('user')]);
+        if (db && user) {
+          const id = await user.id();
+          const ref = db.collection('data/users/' + id).doc('progress');
+          backend.current = {
+            get: async () => {
+              const snap = await ref.get();
+              const v = snap && (typeof snap.data === 'function' ? snap.data() : snap);
+              return v && v.version === 1 ? (v as Progress) : null;
+            },
+            set: (d) => ref.set(d),
+          };
+        } else {
+          const h = await serverHealth();
+          if (h?.db) {
+            const learner = encodeURIComponent(localStorage.getItem('aie600-learner') || 'default');
+            backend.current = {
+              get: async () => {
+                const r = await fetch(`/api/progress?learner=${learner}`, { headers: serverHeaders(), cache: 'no-store' });
+                if (!r.ok) throw new Error(String(r.status));
+                return ((await r.json()) as { data: Progress | null }).data;
+              },
+              set: async (d) => {
+                const r = await fetch(`/api/progress?learner=${learner}`, { method: 'PUT', headers: serverHeaders({ 'content-type': 'application/json' }), body: JSON.stringify(d) });
+                if (!r.ok) throw new Error(String(r.status));
+              },
+            };
+          }
+        }
+        if (cancelled) return;
+        if (!backend.current) {
+          setSync('local');
+          return;
+        }
+        const remote = await backend.current.get();
+        setP((local) => {
+          const fresh = local.updatedAt > new Date(0).toISOString();
+          const winner = remote && (remote.updatedAt ?? '') > local.updatedAt ? { ...empty(), ...remote } : local;
+          saveLocal(winner);
+          if (winner === local && fresh) queueWrite(local);
+          return winner;
+        });
+        setSync('synced');
+      } catch {
+        backend.current = null;
+        if (!cancelled) setSync('local');
+      } finally {
+        clearTimeout(giveUp);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      clearTimeout(giveUp);
+    };
+  }, [queueWrite]);
 
   const update = useCallback(
     (fn: (p: Progress) => void) => {

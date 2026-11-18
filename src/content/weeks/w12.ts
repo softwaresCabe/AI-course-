@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w12.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -16,7 +16,7 @@ const week: Week = {
     'Explain core alignment problems and mechanistic interpretability methods',
     'Operate AI features with tracing, versioning, monitoring and governance',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w12),
   lab: {
     title: 'Lab 12 — Eval harness, red team and observability for your Lab 9/10 app',
     goal: 'Turn one of your apps into a professionally evaluated, monitored and hardened system.',

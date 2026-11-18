@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w03.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -15,7 +15,7 @@ const week: Week = {
     'Use initialization, normalization and residual connections to train deep nets',
     'Write and debug an idiomatic PyTorch training loop',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w03),
   lab: {
     title: 'Lab 3 — Build "micrograd", then an MNIST MLP in PyTorch',
     goal: 'Implement a scalar autograd engine (~150 lines), train a tiny MLP with it, then reproduce the result at scale in PyTorch.',

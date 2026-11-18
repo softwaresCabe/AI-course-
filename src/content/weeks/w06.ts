@@ -1,5 +1,5 @@
 import type { Week } from '../types';
-import lecture from './w06.md?raw';
+import { lectures } from './lectures.generated';
 import { sections } from '../md';
 
 const week: Week = {
@@ -14,7 +14,7 @@ const week: Week = {
     'Explain Kaplan and Chinchilla scaling laws and why deployed models are over-trained',
     'Compare data, sharded (FSDP/ZeRO), tensor, pipeline and expert parallelism',
   ],
-  sections: sections(lecture),
+  sections: sections(lectures.w06),
   lab: {
     title: 'Lab 6 — Scaling-law mini study + compute calculator',
     goal: 'Measure a scaling law yourself on small GPTs, and build a TypeScript compute/cost calculator you can reuse in interviews and planning.',
