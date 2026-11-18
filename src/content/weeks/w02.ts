@@ -1,0 +1,88 @@
+import type { Week } from '../types';
+import lecture from './w02.md?raw';
+import { sections } from '../md';
+
+const week: Week = {
+  n: 2,
+  phase: 1,
+  title: 'Machine Learning Fundamentals',
+  tagline: 'Models, losses, optimizers, generalization and honest evaluation.',
+  hours: 12,
+  objectives: [
+    'Frame any learning problem as model + loss + optimizer',
+    'Implement linear and logistic regression with mini-batch gradient descent',
+    'Diagnose underfitting vs overfitting from learning curves',
+    'Design leak-free train/validation/test splits',
+    'Select metrics (precision, recall, F1, AUC, calibration) from the cost of errors',
+  ],
+  sections: sections(lecture),
+  lab: {
+    title: 'Lab 2 — Logistic regression from scratch vs scikit-learn',
+    goal: 'Implement a full training loop with no ML library, then validate it against scikit-learn and a gradient-boosted baseline on a real tabular dataset.',
+    hours: 6,
+    stack: 'Python, NumPy, pandas, scikit-learn, matplotlib',
+    steps: [
+      'Load the scikit-learn breast cancer dataset (or a public late-shipment / logistics dataset if you prefer a domain you know).',
+      'Make a stratified train/val/test split (70/15/15). Fit a StandardScaler on TRAIN ONLY and apply it to val/test.',
+      'Implement logistic regression in NumPy: sigmoid, BCE loss, gradient (p − y)·x, mini-batch SGD with L2 regularization.',
+      'Plot training and validation loss per epoch for three learning rates (too low, good, too high). Describe what each curve shows.',
+      'Report accuracy, precision, recall, F1 and ROC-AUC on the validation set; pick a decision threshold that favors recall and justify it.',
+      'Compare against sklearn LogisticRegression and HistGradientBoostingClassifier. Only now evaluate all three on the test set — once.',
+      'Plot a calibration (reliability) curve for your model.',
+    ],
+    deliverables: ['week02.ipynb with code, plots and a metrics table', 'A one-paragraph "model card" summarizing intended use, metrics and limitations'],
+    rubric: [
+      { item: 'Correct from-scratch implementation (loss decreases, matches sklearn within ~1–2% AUC)', points: 30 },
+      { item: 'Leak-free preprocessing and splitting', points: 20 },
+      { item: 'Learning-rate experiment with clear interpretation', points: 15 },
+      { item: 'Metrics, threshold choice and calibration analysis', points: 20 },
+      { item: 'Model card quality', points: 15 },
+    ],
+    stretch: ['Add k-fold cross-validation for hyperparameter λ.', 'Implement softmax regression for a 3-class problem and verify ∂L/∂z = softmax(z) − onehot(y) numerically.'],
+  },
+  readings: [
+    { title: 'Stanford CS229 Lecture Notes — Supervised learning, GLMs', author: 'Andrew Ng et al.', url: 'https://cs229.stanford.edu/main_notes.pdf', kind: 'course', required: true },
+    { title: 'Google Machine Learning Crash Course', author: 'Google', url: 'https://developers.google.com/machine-learning/crash-course', kind: 'course' },
+    { title: 'An Introduction to Statistical Learning (Ch. 2, 4, 5)', author: 'James, Witten, Hastie, Tibshirani', url: 'https://www.statlearning.com/', kind: 'book', required: true },
+    { title: 'Deep Double Descent', author: 'Nakkiran et al. (2019)', url: 'https://arxiv.org/abs/1912.02292', kind: 'paper' },
+  ],
+  checklist: [
+    'Empirical risk vs expected risk',
+    'Supervised, self-supervised and reinforcement learning',
+    'Linear regression and MSE (and its Gaussian likelihood interpretation)',
+    'Logistic regression, sigmoid and binary cross-entropy',
+    'Gradient of softmax + cross-entropy = p − y',
+    'Batch vs stochastic vs mini-batch gradient descent',
+    'Learning-rate warmup and cosine decay',
+    'Feature standardization',
+    'Bias–variance trade-off and double descent',
+    'Train / validation / test discipline and k-fold CV',
+    'Data leakage patterns',
+    'L1, L2 / weight decay, early stopping',
+    'Precision, recall, F1, ROC-AUC',
+    'Calibration and reliability curves',
+    'When classical models (GBDTs) beat LLMs',
+  ],
+  flashcards: [
+    { q: 'Gradient of logistic loss w.r.t. weights?', a: '(p − y)·x — prediction minus label, times input.' },
+    { q: 'Precision vs recall?', a: 'Precision = TP/(TP+FP); recall = TP/(TP+FN).' },
+    { q: 'What is the validation set for?', a: 'Choosing hyperparameters and models. The test set is used once for the final estimate.' },
+    { q: 'Signs of overfitting on learning curves?', a: 'Training loss keeps falling while validation loss flattens or rises.' },
+    { q: 'Name three forms of data leakage.', a: 'Target-derived features, duplicate rows across splits, scaling/normalizing with full-dataset statistics (also: random splits on time series).' },
+  ],
+  quiz: [
+    { id: 'w2q1', type: 'mcq', prompt: 'LLM pretraining on raw web text is best described as:', options: ['Supervised learning with human labels', 'Self-supervised learning', 'Reinforcement learning', 'Unsupervised clustering'], answer: 1, explanation: 'Labels (the next tokens) come from the data itself — self-supervised.' },
+    { id: 'w2q2', type: 'mcq', prompt: 'Training loss 0.05, validation loss 0.90 and rising. The most likely diagnosis is:', options: ['Underfitting', 'Overfitting', 'Learning rate too low', 'Perfect fit'], answer: 1, explanation: 'Large train/val gap with validation getting worse = high variance / overfitting.' },
+    { id: 'w2q3', type: 'numeric', prompt: 'A classifier has TP = 80, FP = 20, FN = 40. What is its F1 score? (0–1)', answer: 0.7273, tolerance: 0.01, explanation: 'P = 80/100 = 0.8, R = 80/120 = 0.667. F1 = 2·0.8·0.667/(0.8+0.667) ≈ 0.727.' },
+    { id: 'w2q4', type: 'mcq', prompt: 'You standardize features using the mean and std of the ENTIRE dataset, then split. This is:', options: ['Best practice', 'Data leakage', 'Regularization', 'Only a problem for neural nets'], answer: 1, explanation: 'Test-set statistics leak into training. Fit preprocessing on train only.' },
+    { id: 'w2q5', type: 'mcq', prompt: 'For softmax with cross-entropy, ∂L/∂logits equals:', options: ['softmax(z)', 'onehot(y) − softmax(z)', 'softmax(z) − onehot(y)', 'log softmax(z)'], answer: 2, explanation: 'The famous "predicted minus true" gradient.' },
+    { id: 'w2q6', type: 'multi', prompt: 'Which are forms of regularization? (select all)', options: ['Weight decay', 'Early stopping', 'Increasing the learning rate without bound', 'Data augmentation', 'Dropout'], answer: [0, 1, 3, 4], explanation: 'Weight decay, early stopping, augmentation and dropout all reduce variance. An unbounded learning rate just diverges.' },
+    { id: 'w2q7', type: 'mcq', prompt: 'A fraud model that predicts "not fraud" for everything gets 99.5% accuracy. Which metric would best expose the problem?', options: ['Accuracy', 'Recall on the fraud class', 'Training loss', 'Number of parameters'], answer: 1, explanation: 'Recall on the positive class would be 0.' },
+    { id: 'w2q8', type: 'mcq', prompt: 'Why use learning-rate warmup at the start of training large models?', options: ['To use less memory', 'Early gradients and optimizer statistics are unreliable; large steps then can destabilize training', 'To make the model smaller', 'It is required by the loss function'], answer: 1, explanation: 'Warmup gives adaptive optimizers time to estimate moments and avoids early divergence.' },
+    { id: 'w2q9', type: 'mcq', prompt: 'For a tabular dataset of 50k shipments with 40 numeric/categorical features, which is usually the strongest first baseline?', options: ['Fine-tuned 70B LLM', 'Gradient-boosted trees', 'k-means', 'A 1-layer RNN'], answer: 1, explanation: 'GBDTs remain very strong, cheap and explainable on tabular data.' },
+    { id: 'w2q10', type: 'mcq', prompt: 'A model is "well calibrated" if:', options: ['Its accuracy is above 90%', 'Among predictions with confidence 0.7, about 70% are correct', 'It never outputs probabilities near 0 or 1', 'Its loss is zero on training data'], answer: 1, explanation: 'Calibration = predicted probabilities match observed frequencies.' },
+    { id: 'w2q11', type: 'short', prompt: 'You are building a model to flag warehouse orders likely to ship late. Describe how you would split the data and which metric you would optimize, and why.', rubric: ['Uses a time-based split (train on past, validate/test on later periods) to avoid leakage', 'Mentions keeping test untouched until the end / validation for tuning', 'Chooses a metric tied to business cost (e.g. recall at fixed precision, PR-AUC) rather than plain accuracy', 'Justifies with the cost asymmetry of missed late orders vs false alarms'], modelAnswer: 'Because the data is temporal, split chronologically: e.g. train on months 1–9, validate on 10–11, test on 12, so the model never sees the future. Tune only on validation and evaluate on test once. Late shipments are relatively rare and a missed one is costly (customer impact) while a false alarm costs a little ops attention, so optimize recall at an acceptable precision (or PR-AUC), and pick the threshold from the ops team’s capacity to review flagged orders.', explanation: 'Time-aware splitting and cost-driven metrics are the core of a production ML design answer.' },
+  ],
+};
+
+export default week;

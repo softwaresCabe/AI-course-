@@ -1,0 +1,87 @@
+import type { Week } from '../types';
+import lecture from './w06.md?raw';
+import { sections } from '../md';
+
+const week: Week = {
+  n: 6,
+  phase: 2,
+  title: 'Pretraining, Scaling Laws & Distributed Training',
+  tagline: 'Data pipelines, compute budgets, Chinchilla, and training across thousands of GPUs.',
+  hours: 13,
+  objectives: [
+    'Describe a pretraining data pipeline including filtering, deduplication and decontamination',
+    'Estimate training compute with C ≈ 6ND and convert it into GPU-hours and dollars',
+    'Explain Kaplan and Chinchilla scaling laws and why deployed models are over-trained',
+    'Compare data, sharded (FSDP/ZeRO), tensor, pipeline and expert parallelism',
+  ],
+  sections: sections(lecture),
+  lab: {
+    title: 'Lab 6 — Scaling-law mini study + compute calculator',
+    goal: 'Measure a scaling law yourself on small GPTs, and build a TypeScript compute/cost calculator you can reuse in interviews and planning.',
+    hours: 6,
+    stack: 'PyTorch (your Lab 5 GPT), matplotlib; TypeScript/React for the calculator',
+    steps: [
+      'Train 4–5 GPT sizes (e.g. 0.5M → 20M params) for the same number of tokens on the same data; record final validation loss.',
+      'Plot log(loss) vs log(params) and fit a power law. Report the exponent.',
+      'For one fixed compute budget, trade off params vs tokens (3 configs) and identify the best — compare to the ~20 tokens/param heuristic.',
+      'Build a small TypeScript/React page: inputs N, D, peak FLOP/s, MFU, $/GPU-hour, GPU count → outputs total FLOPs, GPU-hours, wall-clock days, cost, and inference FLOPs per token.',
+      'Use the calculator to estimate the cost of training a 7B model on 2T tokens and a 70B model on 15T tokens.',
+      'Run the same training script with torch DDP on 2 processes (CPU "gloo" backend is fine) and verify identical loss to single-process training with the same global batch.',
+    ],
+    deliverables: ['scaling.ipynb with plot and fitted exponent', 'Compute calculator (TS/React) source', 'One-page memo: "What it would cost us to train vs fine-tune vs call an API"'],
+    rubric: [
+      { item: 'Scaling plot with fitted power law and discussion', points: 30 },
+      { item: 'Fixed-compute trade-off experiment', points: 15 },
+      { item: 'Correct compute calculator', points: 25 },
+      { item: 'DDP run verified', points: 15 },
+      { item: 'Cost memo — clear, quantitative, decision-oriented', points: 15 },
+    ],
+    stretch: ['Run FSDP on 2+ GPUs and compare peak memory to DDP.', 'Reproduce a FineWeb-style quality filter on a small crawl sample.'],
+  },
+  readings: [
+    { title: 'Scaling Laws for Neural Language Models', author: 'Kaplan et al. (2020)', url: 'https://arxiv.org/abs/2001.08361', kind: 'paper', required: true },
+    { title: 'Training Compute-Optimal Large Language Models (Chinchilla)', author: 'Hoffmann et al. (2022)', url: 'https://arxiv.org/abs/2203.15556', kind: 'paper', required: true },
+    { title: 'The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale', author: 'Penedo et al. (2024)', url: 'https://arxiv.org/abs/2406.17557', kind: 'paper', required: true },
+    { title: 'ZeRO: Memory Optimizations Toward Training Trillion Parameter Models', author: 'Rajbhandari et al. (2019)', url: 'https://arxiv.org/abs/1910.02054', kind: 'paper' },
+    { title: 'Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism', author: 'Shoeybi et al. (2019)', url: 'https://arxiv.org/abs/1909.08053', kind: 'paper' },
+    { title: 'The Ultra-Scale Playbook: Training LLMs on GPU Clusters', author: 'Hugging Face', url: 'https://huggingface.co/spaces/nanotron/ultrascale-playbook', kind: 'blog' },
+  ],
+  checklist: [
+    'Base model vs assistant model',
+    'Data pipeline: extraction, filtering, dedup, decontamination, mixing, annealing',
+    'C ≈ 6ND and where the 6 comes from',
+    'Inference ≈ 2N FLOPs per token',
+    'Converting FLOPs to GPU-hours with MFU',
+    'Kaplan power laws',
+    'Chinchilla ~20 tokens/parameter and why models over-train for inference',
+    'Emergence and metric choice',
+    'Test-time compute as a second scaling axis',
+    'Mixed precision (bf16/fp8) and loss-spike mitigation',
+    'DDP and all-reduce',
+    'ZeRO / FSDP sharding',
+    'Tensor, pipeline, sequence and expert parallelism',
+    'Communication bandwidth as the bottleneck',
+  ],
+  flashcards: [
+    { q: 'Training FLOPs formula?', a: 'C ≈ 6·N·D (N params, D tokens).' },
+    { q: 'Chinchilla rule of thumb?', a: '~20 training tokens per parameter for compute-optimal training.' },
+    { q: 'Why do labs train small models on far more tokens than Chinchilla-optimal?', a: 'Inference cost scales with N; extra training compute buys a cheaper-to-serve model.' },
+    { q: 'What does FSDP shard?', a: 'Parameters, gradients and optimizer states across data-parallel workers.' },
+    { q: 'Where is tensor parallelism typically used?', a: 'Within a node with fast interconnect (NVLink), because it communicates every layer.' },
+  ],
+  quiz: [
+    { id: 'w6q1', type: 'numeric', prompt: 'Training FLOPs for a 13B-parameter model on 1T tokens using C ≈ 6ND? Answer as a multiple of 1e22 (e.g. 7.8 for 7.8e22).', answer: 7.8, tolerance: 0.02, explanation: '6 · 13e9 · 1e12 = 7.8e22.' },
+    { id: 'w6q2', type: 'numeric', prompt: 'Chinchilla-optimal tokens for a 10B-parameter model (≈20 tokens/param), in billions of tokens?', answer: 200, tolerance: 0.05, unit: 'B tokens', explanation: '20 × 10B = 200B tokens.' },
+    { id: 'w6q3', type: 'numeric', prompt: 'A run needs 3.6e21 FLOPs. Your GPU sustains 1e15 FLOP/s peak at 50% MFU. How many GPU-hours?', answer: 2000, tolerance: 0.02, unit: 'GPU-hours', explanation: '3.6e21 / (5e14) = 7.2e6 s = 2,000 GPU-hours.' },
+    { id: 'w6q4', type: 'mcq', prompt: 'The main reason for benchmark decontamination of pretraining data is:', options: ['To reduce dataset size', 'So evaluation scores reflect generalization rather than memorized test items', 'To remove code', 'To speed up tokenization'], answer: 1, explanation: 'Contaminated benchmarks overstate capability.' },
+    { id: 'w6q5', type: 'mcq', prompt: 'A pure base model asked "What is the capital of France?" might:', options: ['Always answer "Paris." politely', 'Continue the document, e.g. with more quiz questions', 'Refuse', 'Crash'], answer: 1, explanation: 'Base models complete documents; assistant behavior comes from post-training.' },
+    { id: 'w6q6', type: 'mcq', prompt: 'Which parallelism replicates the full model on every GPU and all-reduces gradients?', options: ['Tensor parallelism', 'Pipeline parallelism', 'Data parallelism (DDP)', 'Expert parallelism'], answer: 2, explanation: 'Classic DDP.' },
+    { id: 'w6q7', type: 'mcq', prompt: 'Your 30B model’s optimizer state does not fit in GPU memory even though a single forward pass would. The most direct fix is:', options: ['Pipeline parallelism only', 'ZeRO/FSDP sharding of optimizer state and gradients', 'Increase batch size', 'Use fp64'], answer: 1, explanation: 'Sharding optimizer state across data-parallel ranks is exactly what ZeRO/FSDP do.' },
+    { id: 'w6q8', type: 'multi', prompt: 'Which are standard mitigations for loss spikes in large runs? (select all)', options: ['Gradient clipping', 'Restarting from an earlier checkpoint and skipping bad batches', 'Lowering the learning rate', 'Removing all normalization layers', 'Logit z-loss or QK-norm'], answer: [0, 1, 2, 4], explanation: 'Removing normalization makes instability worse.' },
+    { id: 'w6q9', type: 'numeric', prompt: 'Approximate forward-pass FLOPs to generate ONE token with a 70B dense model (≈2N), in units of 1e9 (GFLOPs)?', answer: 140, tolerance: 0.02, unit: 'GFLOPs', explanation: '2 × 70e9 = 1.4e11 = 140 GFLOPs per token (ignoring attention over context).' },
+    { id: 'w6q10', type: 'mcq', prompt: 'Chinchilla (70B) outperformed Gopher (280B) at similar training compute mainly because:', options: ['It used a different architecture', 'It was trained on ~4× more tokens with fewer parameters — a better compute allocation', 'It used RLHF', 'It had a larger vocabulary'], answer: 1, explanation: 'Compute-optimal balance of N and D.' },
+    { id: 'w6q11', type: 'short', prompt: 'Your CEO asks: "Should we pretrain our own LLM for our logistics product?" Give a quantitative, reasoned answer.', rubric: ['Estimates compute/cost with 6ND for a plausible model size and token count', 'Notes data requirements (trillions of tokens) and team/infra needs', 'Compares against alternatives: API models, fine-tuning open weights, RAG', 'Gives a clear recommendation tied to the business (e.g. fine-tune/RAG unless there is a unique data or cost moat)'], modelAnswer: 'Even a modest 7B model trained on 2T tokens needs ~6·7e9·2e12 ≈ 8.4e22 FLOPs — roughly 50–60k GPU-hours at good utilization, plus data acquisition, cleaning, evaluation, failed runs and a specialized team; realistically a multi-million-dollar, multi-month effort that would still trail frontier models. Our differentiation is domain data and workflows, which we can exploit far more cheaply with frontier APIs plus RAG over our warehouse data, and fine-tuning (e.g. LoRA on an open-weight model) for specific high-volume tasks. Recommendation: do not pretrain; start with API + RAG, measure, and fine-tune an open model where cost or latency demands it.', explanation: 'Being able to do this estimate is a hallmark of a strong AI engineer.' },
+  ],
+};
+
+export default week;

@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { -webkit-text-size-adjust: 100%; }
+body { @apply bg-paper text-ink font-sans antialiased; }
+
+.lecture { @apply font-serif text-[1.06rem] leading-relaxed text-ink; }
+.lecture p { @apply my-3; }
+.lecture h3 { @apply font-sans font-semibold text-lg mt-6 mb-2; }
+.lecture ul { @apply list-disc pl-6 my-3 space-y-1; }
+.lecture ol { @apply list-decimal pl-6 my-3 space-y-1; }
+.lecture strong { @apply font-semibold; }
+.lecture a { @apply text-brand underline underline-offset-2; }
+.lecture code { @apply font-mono text-[0.86em] bg-brand-soft/60 text-brand-deep px-1 py-0.5 rounded; }
+.lecture pre { @apply bg-[#1d1f24] text-[#e8e6e1] rounded-lg p-4 my-4 overflow-x-auto text-[0.82rem] leading-6; }
+.lecture pre code { @apply bg-transparent text-inherit p-0; }
+.lecture table { @apply w-full my-4 text-sm font-sans border-collapse; }
+.lecture th { @apply text-left bg-paper-line/60 px-3 py-2 font-semibold; }
+.lecture td { @apply border-t border-paper-line px-3 py-2 align-top; }
+.lecture blockquote { @apply border-l-4 border-brand pl-4 italic text-ink-soft; }
+
+.card { @apply bg-paper-card border border-paper-line rounded-xl; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed; }
+.btn-primary { @apply btn bg-brand text-white hover:bg-brand-deep; }
+.btn-ghost { @apply btn border border-paper-line bg-white hover:bg-paper; }
+.chip { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
+.input { @apply w-full rounded-lg border border-paper-line bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30; }
+.kicker { @apply text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand; }

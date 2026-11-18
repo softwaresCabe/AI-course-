@@ -1,0 +1,95 @@
+import type { Week } from '../types';
+import lecture from './w01.md?raw';
+import { sections } from '../md';
+
+const week: Week = {
+  n: 1,
+  phase: 1,
+  title: 'Mathematical & Computational Foundations',
+  tagline: 'Linear algebra, calculus and probability — the language every AI system is written in.',
+  hours: 12,
+  objectives: [
+    'Manipulate vectors, matrices and tensors and reason about their shapes',
+    'Estimate the FLOP cost of a matrix multiplication',
+    'Explain gradients and the chain rule and why they enable learning',
+    'Derive cross-entropy / negative log-likelihood as the training loss for classifiers and LLMs',
+    'Implement a numerically stable softmax and compute perplexity',
+  ],
+  sections: sections(lecture),
+  lab: {
+    title: 'Lab 1 — NumPy from first principles',
+    goal: 'Build the numerical toolkit you will reuse all course: stable softmax, cross-entropy, a linear layer, and a numerical gradient checker.',
+    hours: 5,
+    stack: 'Python 3.11+, NumPy, Jupyter (or VS Code notebooks)',
+    steps: [
+      'Create a repo "ai-eng-course" with a /labs/week01 folder and a Python virtualenv (uv or venv).',
+      'Implement softmax(z) both naively and with max-subtraction. Show the naive version overflows on z = [1000, 1001, 1002] and the stable one does not.',
+      'Implement cross_entropy(logits, target_index) using log-sum-exp. Verify it equals -log(softmax(logits)[target]) on random inputs.',
+      'Implement linear(x, W, b) and assert output shapes for batch sizes 1, 32 and 1024.',
+      'Write numerical_grad(f, x, eps=1e-5) using central differences, and use it to check the analytic gradient of f(x) = sum(x**2) and of sigmoid.',
+      'Time a Python-loop dot product vs np.dot for vectors of length 1,000,000 and report the speedup.',
+      'Compute the perplexity of a uniform model over a 50,000-token vocabulary and explain the result in one sentence.',
+    ],
+    deliverables: [
+      'week01.ipynb with all functions, asserts and printed results',
+      'A short README (5–10 lines) explaining the overflow bug and the fix',
+    ],
+    rubric: [
+      { item: 'Stable softmax and log-sum-exp cross-entropy correct and tested', points: 30 },
+      { item: 'Shape assertions for the linear layer across batch sizes', points: 15 },
+      { item: 'Numerical gradient checker agrees with analytic gradients (rel. error < 1e-6)', points: 25 },
+      { item: 'Vectorization benchmark with measured speedup', points: 15 },
+      { item: 'Perplexity calculation and README explanation', points: 15 },
+    ],
+    stretch: [
+      'Implement SVD-based low-rank approximation of a random 512×512 matrix and plot reconstruction error vs rank.',
+      'Re-implement the same functions in TypeScript and compare performance with a typed-array version.',
+    ],
+  },
+  readings: [
+    { title: 'Essence of Linear Algebra (video series)', author: '3Blue1Brown', url: 'https://www.3blue1brown.com/topics/linear-algebra', kind: 'video', required: true },
+    { title: 'Mathematics for Machine Learning — Ch. 2, 5, 6', author: 'Deisenroth, Faisal & Ong', url: 'https://mml-book.github.io/', kind: 'book', required: true },
+    { title: 'NumPy: the absolute basics for beginners', author: 'NumPy docs', url: 'https://numpy.org/doc/stable/user/absolute_beginners.html', kind: 'docs' },
+    { title: 'Essence of Calculus (video series)', author: '3Blue1Brown', url: 'https://www.3blue1brown.com/topics/calculus', kind: 'video' },
+  ],
+  checklist: [
+    'Dot product, cosine similarity and their geometric meaning',
+    'Matrix multiplication shapes and the 2·m·k·n FLOP rule',
+    'Broadcasting rules in NumPy/PyTorch',
+    'Rank, SVD and low-rank approximation (preview of LoRA)',
+    'Vector norms and where they appear (weight decay, clipping, normalization)',
+    'Derivatives, partial derivatives and the gradient',
+    'Chain rule and why it implies vanishing/exploding gradients',
+    'Gradient descent update rule and the role of learning rate',
+    'Chain rule of probability and autoregressive factorization',
+    'Softmax and the max-subtraction / log-sum-exp trick',
+    'Maximum likelihood and negative log-likelihood',
+    'Entropy, cross-entropy and KL divergence',
+    'Perplexity',
+    'Floating-point formats: fp32, fp16, bf16',
+    'Vectorization and why it is faster',
+  ],
+  flashcards: [
+    { q: 'FLOPs for multiplying an (m×k) matrix by a (k×n) matrix?', a: '≈ 2·m·k·n (one multiply and one add per term).' },
+    { q: 'Why subtract max(z) before softmax?', a: 'Prevents overflow in e^z; softmax is invariant to adding a constant to all logits, so the result is identical.' },
+    { q: 'Cross-entropy with a one-hot target equals…', a: '−log q(correct class), the negative log-likelihood of the right answer.' },
+    { q: 'Perplexity in terms of loss?', a: 'exp(mean per-token negative log-likelihood, in nats).' },
+    { q: 'Why is bf16 preferred over fp16 for training?', a: 'Same exponent range as fp32, so it rarely overflows/underflows and usually needs no loss scaling.' },
+    { q: 'What does the gradient point toward?', a: 'The direction of steepest increase of the function; gradient descent steps the opposite way.' },
+  ],
+  quiz: [
+    { id: 'w1q1', type: 'mcq', prompt: 'x has shape (64, 512) and W has shape (512, 2048). What is the shape of x @ W?', options: ['(512, 2048)', '(64, 2048)', '(64, 512)', '(2048, 64)'], answer: 1, explanation: 'Inner dimensions (512) cancel: (64×512)@(512×2048) → (64×2048).' },
+    { id: 'w1q2', type: 'numeric', prompt: 'Approximately how many FLOPs does that matmul (64×512 @ 512×2048) take? Give the number in millions (MFLOPs).', answer: 134.2, tolerance: 0.05, unit: 'MFLOPs', explanation: '2 · 64 · 512 · 2048 = 134,217,728 ≈ 134 MFLOPs.' },
+    { id: 'w1q3', type: 'mcq', prompt: 'Cosine similarity between two vectors pointing in exactly opposite directions is:', options: ['0', '1', '−1', 'Undefined'], answer: 2, explanation: 'cos(180°) = −1.' },
+    { id: 'w1q4', type: 'mcq', prompt: 'softmax([2, 2, 2]) equals:', options: ['[2/6, 2/6, 2/6]', '[1/3, 1/3, 1/3]', '[0, 0, 1]', '[e², e², e²]'], answer: 1, explanation: 'Equal logits produce a uniform distribution, regardless of their value.' },
+    { id: 'w1q5', type: 'numeric', prompt: 'A model assigns probability 0.25 to the correct next token. What is the cross-entropy loss for that token, in nats? (natural log)', answer: 1.386, tolerance: 0.02, explanation: '−ln(0.25) = ln 4 ≈ 1.386 nats.' },
+    { id: 'w1q6', type: 'numeric', prompt: "A language model's mean per-token loss on a test set is 2.0 nats. What is its perplexity?", answer: 7.389, tolerance: 0.02, explanation: 'Perplexity = e^2.0 ≈ 7.39.' },
+    { id: 'w1q7', type: 'multi', prompt: 'Which statements about KL divergence KL(p‖q) are true? (select all)', options: ['It is always ≥ 0', 'It is symmetric: KL(p‖q) = KL(q‖p)', 'It equals H(p,q) − H(p)', 'It is 0 when p = q'], answer: [0, 2, 3], explanation: 'KL is non-negative, equals cross-entropy minus entropy, and is zero iff the distributions match. It is NOT symmetric.' },
+    { id: 'w1q8', type: 'mcq', prompt: 'In a deep network, the gradient for an early layer is a product of many local derivatives. If most are around 0.5, training will likely suffer from:', options: ['Exploding gradients', 'Vanishing gradients', 'Overfitting', 'Label noise'], answer: 1, explanation: 'Products of many numbers < 1 shrink exponentially toward zero.' },
+    { id: 'w1q9', type: 'mcq', prompt: 'Why do LLMs maximize log-likelihood instead of the raw likelihood of a sequence?', options: ['Logs make the model larger', 'Products of many small probabilities underflow; logs turn them into stable sums', 'Raw likelihood cannot be differentiated', 'Logs remove the need for softmax'], answer: 1, explanation: 'log turns a product of probabilities into a sum, which is numerically stable and has nicer gradients. The optimum is the same.' },
+    { id: 'w1q10', type: 'mcq', prompt: 'LoRA expresses a weight update for a 4096×4096 matrix as B·A with rank r = 8. How many trainable parameters is that?', options: ['16,777,216', '65,536', '32,768', '8'], answer: 1, explanation: 'B is 4096×8 and A is 8×4096 → 2 · 4096 · 8 = 65,536, about 0.4% of the full matrix.' },
+    { id: 'w1q11', type: 'short', prompt: 'Explain in 3–5 sentences why the chain rule of probability makes next-token prediction a complete model of text.', rubric: ['States p(x₁…xₙ) = Π p(xᵢ | x<ᵢ)', 'Explains that predicting each token given its prefix therefore defines the probability of any whole sequence', 'Connects to sampling / generation token by token', 'Mentions training by minimizing the sum of per-token negative log-likelihoods'], modelAnswer: 'By the chain rule of probability, the joint probability of a sequence factors exactly into a product of conditionals p(xᵢ | x₁…xᵢ₋₁). So a model that outputs a good conditional distribution for the next token given any prefix implicitly defines the probability of every possible sequence — no approximation is required. Generation follows by sampling one token at a time and appending it to the prefix. Training maximizes the log of that product, which is the sum of per-token log-probabilities, i.e. minimizes the average cross-entropy.', explanation: 'This factorization is the foundation of autoregressive language modeling.' },
+  ],
+};
+
+export default week;

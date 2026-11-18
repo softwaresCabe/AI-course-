@@ -1,0 +1,85 @@
+import type { Week } from '../types';
+import lecture from './w04.md?raw';
+import { sections } from '../md';
+
+const week: Week = {
+  n: 4,
+  phase: 1,
+  title: 'Tokens, Embeddings & the Birth of Attention',
+  tagline: 'How text becomes vectors, why RNNs hit a wall, and the idea that replaced them.',
+  hours: 12,
+  objectives: [
+    'Implement byte-level BPE and explain its practical consequences for cost and behavior',
+    'Explain embedding tables, weight tying and semantic vector spaces',
+    'Describe n-gram, neural and recurrent language models and their limits',
+    'Compute scaled dot-product attention with a causal mask by hand and in code',
+  ],
+  sections: sections(lecture),
+  lab: {
+    title: 'Lab 4 — Tokenizer + bigram/MLP language model + attention by hand',
+    goal: 'Build the front half of an LLM: a BPE tokenizer, a baseline language model, and a single attention head you verify numerically.',
+    hours: 6,
+    stack: 'Python, PyTorch, tiktoken (for comparison)',
+    steps: [
+      'Implement byte-level BPE training (encode/decode/merge) on a few MB of text (e.g. TinyShakespeare). Follow Karpathy’s "Let’s build the GPT Tokenizer".',
+      'Compare your token counts against tiktoken (cl100k_base or o200k_base) on English prose, Python code, and a non-English paragraph. Tabulate chars-per-token.',
+      'Train a bigram language model and then an MLP language model (Bengio-style, context 3–8 tokens). Report validation loss and perplexity.',
+      'Implement scaled dot-product self-attention with a causal mask in ~20 lines of PyTorch. Check it against torch.nn.functional.scaled_dot_product_attention(is_causal=True).',
+      'Show empirically what happens to softmax entropy if you remove the 1/√d_k scale for d_k = 512.',
+    ],
+    deliverables: ['bpe.py with round-trip tests (decode(encode(s)) == s)', 'week04.ipynb with the token-count table, LM results and attention verification'],
+    rubric: [
+      { item: 'Working BPE with round-trip tests', points: 30 },
+      { item: 'Tokenizer comparison table with analysis of cost implications', points: 15 },
+      { item: 'Bigram and MLP LMs trained; perplexity reported', points: 20 },
+      { item: 'Causal attention matches PyTorch reference', points: 25 },
+      { item: 'Scaling-factor experiment explained', points: 10 },
+    ],
+    stretch: ['Train a small word2vec (skip-gram with negative sampling) and probe analogies.', 'Implement an LSTM LM and compare to the MLP LM.'],
+  },
+  readings: [
+    { title: 'Neural Machine Translation of Rare Words with Subword Units (BPE)', author: 'Sennrich, Haddow, Birch (2016)', url: 'https://arxiv.org/abs/1508.07909', kind: 'paper', required: true },
+    { title: 'Neural Machine Translation by Jointly Learning to Align and Translate', author: 'Bahdanau, Cho, Bengio (2014)', url: 'https://arxiv.org/abs/1409.0473', kind: 'paper', required: true },
+    { title: "Let's build the GPT Tokenizer / makemore series", author: 'Andrej Karpathy', url: 'https://karpathy.ai/zero-to-hero.html', kind: 'video', required: true },
+    { title: 'Efficient Estimation of Word Representations in Vector Space (word2vec)', author: 'Mikolov et al. (2013)', url: 'https://arxiv.org/abs/1301.3781', kind: 'paper' },
+    { title: 'Speech and Language Processing — Ch. on N-grams, RNNs, Attention', author: 'Jurafsky & Martin', url: 'https://web.stanford.edu/~jurafsky/slp3/', kind: 'book' },
+  ],
+  checklist: [
+    'Character vs word vs subword tokenization trade-offs',
+    'Byte-level BPE training and encoding',
+    'WordPiece and Unigram/SentencePiece (at a high level)',
+    'Tokens-per-character effects on cost and context across languages and code',
+    'Special tokens and prompt-injection risk via raw special tokens',
+    'Embedding tables and weight tying',
+    'word2vec and semantic vector arithmetic',
+    'n-gram LMs and smoothing',
+    'RNN/LSTM language models',
+    'Why RNNs are hard to parallelize and bottlenecked',
+    'Query/key/value intuition',
+    'Scaled dot-product attention formula and the √d_k factor',
+    'Self-attention O(n²) cost',
+    'Causal masking and parallel training',
+  ],
+  flashcards: [
+    { q: 'Rule of thumb: English characters per token?', a: '~4 characters (≈0.75 words) per token for modern BPE tokenizers.' },
+    { q: 'Why byte-level BPE?', a: 'Base vocabulary of 256 bytes means any string is encodable — no unknown tokens.' },
+    { q: 'Attention formula?', a: 'softmax(QKᵀ / √d_k) V.' },
+    { q: 'Why divide by √d_k?', a: 'Dot-product variance grows with d_k; scaling keeps softmax out of saturation so gradients stay healthy.' },
+    { q: 'What does the causal mask do?', a: 'Sets scores for future positions to −∞ so each token attends only to itself and earlier tokens.' },
+  ],
+  quiz: [
+    { id: 'w4q1', type: 'mcq', prompt: 'Your app pays per token. Users increasingly submit text in Thai and Hindi instead of English. Typically, cost per character will:', options: ['Decrease', 'Stay the same', 'Increase, because these scripts often need more tokens per character', 'Become zero'], answer: 2, explanation: 'Tokenizers trained mostly on English allocate fewer merges to other scripts, so more tokens per character.' },
+    { id: 'w4q2', type: 'mcq', prompt: 'BPE builds its vocabulary by repeatedly:', options: ['Splitting the longest word', 'Merging the most frequent adjacent pair of symbols', 'Sampling random substrings', 'Clustering embeddings'], answer: 1, explanation: 'Greedy frequency-based pair merging.' },
+    { id: 'w4q3', type: 'numeric', prompt: 'Roughly how many tokens is a 12,000-character English document? (use the ~4 chars/token rule)', answer: 3000, tolerance: 0.1, explanation: '12,000 / 4 ≈ 3,000 tokens.' },
+    { id: 'w4q4', type: 'mcq', prompt: 'An embedding lookup E[token_id] is mathematically equivalent to:', options: ['A convolution', 'Multiplying a one-hot vector by E', 'Softmax over E', 'An attention head'], answer: 1, explanation: 'Selecting a row = one-hot times matrix.' },
+    { id: 'w4q5', type: 'multi', prompt: 'Which were key limitations of RNNs that motivated transformers? (select all)', options: ['Sequential dependence prevents parallelism across time steps during training', 'All past information squeezed into a fixed-size hidden state', 'They cannot be trained with gradient descent', 'Vanishing gradients over long ranges'], answer: [0, 1, 3], explanation: 'RNNs train with backprop through time; the others are real limitations.' },
+    { id: 'w4q6', type: 'mcq', prompt: 'In attention, which matrix holds the content that is actually mixed into the output?', options: ['Q', 'K', 'V', 'The mask'], answer: 2, explanation: 'Weights come from Q·K; the output is a weighted sum of V.' },
+    { id: 'w4q7', type: 'numeric', prompt: 'For a sequence of 8,192 tokens, how many entries are in a single head’s attention score matrix? (in millions)', answer: 67.1, tolerance: 0.02, unit: 'million', explanation: '8192² = 67,108,864 ≈ 67.1M — quadratic growth.' },
+    { id: 'w4q8', type: 'mcq', prompt: 'With a causal mask, token 5 (0-indexed) in a sequence attends to:', options: ['Only token 5', 'Tokens 0–5', 'Tokens 5–end', 'All tokens'], answer: 1, explanation: 'Itself and all earlier positions.' },
+    { id: 'w4q9', type: 'mcq', prompt: 'Doubling sequence length (same d_model) changes the attention score computation cost by about:', options: ['1×', '2×', '4×', '8×'], answer: 2, explanation: 'O(n²): 2² = 4×.' },
+    { id: 'w4q10', type: 'mcq', prompt: 'Why must applications avoid passing user-supplied strings like "<|im_end|>" through as real special tokens?', options: ['They waste tokens', 'They can let users forge chat-role boundaries (a prompt-injection vector)', 'They break UTF-8', 'They increase latency'], answer: 1, explanation: 'Special tokens control structure; tokenizers should treat user text as plain text.' },
+    { id: 'w4q11', type: 'short', prompt: 'Explain attention as a "soft dictionary lookup" and contrast it with a Python dict lookup.', rubric: ['Query compared against all keys for similarity (dot products)', 'Softmax converts scores into weights that sum to 1', 'Output is a weighted blend of values rather than one exact match', 'Notes it is differentiable, so Q/K/V projections can be learned'], modelAnswer: 'A Python dict takes a key and returns exactly one value whose key matches. Attention takes a query vector, scores it against every key with a dot product, turns the scores into a probability distribution with softmax, and returns the weighted average of all values. So instead of a hard exact match it returns a soft blend dominated by the best-matching entries. Because every step is differentiable, the network can learn the projections that produce queries, keys and values end to end.', explanation: 'This intuition will carry you through transformers and retrieval.' },
+  ],
+};
+
+export default week;

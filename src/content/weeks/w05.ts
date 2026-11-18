@@ -1,0 +1,88 @@
+import type { Week } from '../types';
+import lecture from './w05.md?raw';
+import { sections } from '../md';
+
+const week: Week = {
+  n: 5,
+  phase: 2,
+  title: 'The Transformer Architecture',
+  tagline: 'Build GPT from scratch and understand every line.',
+  hours: 15,
+  objectives: [
+    'Draw and explain a decoder-only transformer block (pre-norm, MHA, FFN, residuals)',
+    'Reason about the residual stream and the roles of attention vs MLP layers',
+    'Count parameters from d_model, layers and vocabulary',
+    'Explain MQA/GQA, Mixture-of-Experts and RoPE',
+    'Implement and train a small GPT that generates coherent text',
+  ],
+  sections: sections(lecture),
+  lab: {
+    title: 'Lab 5 — nanoGPT from scratch',
+    goal: 'Implement a decoder-only transformer in PyTorch, train it on a small corpus, and generate text.',
+    hours: 8,
+    stack: 'PyTorch, a GPU (Colab, Kaggle, or a rented cloud GPU) — CPU works for a tiny config',
+    steps: [
+      'Watch Karpathy’s "Let’s build GPT: from scratch, in code, spelled out" and code along — do not copy-paste.',
+      'Implement: token + position embeddings, CausalSelfAttention (multi-head), MLP, pre-norm Block, GPT model with weight tying.',
+      'Write a parameter-count function and check it against your formula 12·N·d² + V·d (+ positional embeddings).',
+      'Train on TinyShakespeare (char-level or with your BPE from Lab 4). Target validation loss well below the bigram baseline.',
+      'Implement generate() with temperature and top-k sampling.',
+      'Swap learned positions for RoPE and compare validation loss.',
+      'Ablations (pick two): remove residuals; post-norm vs pre-norm; 1 head vs 8 heads; no √d scaling. Record results in a table.',
+    ],
+    deliverables: ['gpt.py (model) and train.py', 'Samples at 3 temperatures', 'Ablation table with interpretation'],
+    rubric: [
+      { item: 'Correct, readable transformer implementation', points: 35 },
+      { item: 'Parameter count matches formula', points: 10 },
+      { item: 'Training reaches strong validation loss; samples are coherent', points: 20 },
+      { item: 'RoPE implemented and compared', points: 15 },
+      { item: 'Two ablations with clear conclusions', points: 20 },
+    ],
+    stretch: ['Implement GQA and measure KV-cache size reduction.', 'Load GPT-2 124M weights into your architecture and match Hugging Face logits.'],
+  },
+  readings: [
+    { title: 'Attention Is All You Need', author: 'Vaswani et al. (2017)', url: 'https://arxiv.org/abs/1706.03762', kind: 'paper', required: true },
+    { title: 'The Illustrated Transformer', author: 'Jay Alammar', url: 'https://jalammar.github.io/illustrated-transformer/', kind: 'blog', required: true },
+    { title: "Let's build GPT: from scratch, in code, spelled out", author: 'Andrej Karpathy', url: 'https://www.youtube.com/watch?v=kCc8FmEb1nY', kind: 'video', required: true },
+    { title: 'A Mathematical Framework for Transformer Circuits', author: 'Elhage et al. (Anthropic, 2021)', url: 'https://transformer-circuits.pub/2021/framework/index.html', kind: 'paper' },
+    { title: 'RoFormer: Enhanced Transformer with Rotary Position Embedding', author: 'Su et al. (2021)', url: 'https://arxiv.org/abs/2104.09864', kind: 'paper' },
+    { title: 'Language Models are Unsupervised Multitask Learners (GPT-2)', author: 'Radford et al. (2019)', url: 'https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf', kind: 'paper' },
+  ],
+  checklist: [
+    'Encoder-only vs decoder-only vs encoder–decoder',
+    'End-to-end decoder-only forward pass',
+    'Pre-norm vs post-norm',
+    'Residual stream mental model',
+    'Multi-head attention and W_O',
+    'Induction heads (in-context learning mechanism)',
+    'MQA and GQA',
+    'FFN / SwiGLU and its parameter count',
+    'Parameter counting: ≈12·N·d² + V·d',
+    'Mixture-of-Experts: total vs active parameters',
+    'Sinusoidal, learned, RoPE and ALiBi positions',
+    'Shifted-target parallel training',
+    'Why transformers scale; SSM/hybrid alternatives',
+  ],
+  flashcards: [
+    { q: 'Approximate parameters per transformer block?', a: '≈12·d² (4d² attention + 8d² FFN with d_ff = 4d).' },
+    { q: 'What does GQA reduce?', a: 'KV-cache size and memory bandwidth at inference, by sharing K/V across groups of query heads.' },
+    { q: 'RoPE in one sentence?', a: 'Rotate q and k by position-dependent angles so their dot product depends on relative position.' },
+    { q: 'MoE total vs active parameters?', a: 'Total = all experts; active = only the routed top-k experts per token, which sets FLOPs per token.' },
+    { q: 'What do attention vs MLP layers do in the residual-stream view?', a: 'Attention moves information between positions; MLPs transform information within a position.' },
+  ],
+  quiz: [
+    { id: 'w5q1', type: 'mcq', prompt: 'Which family are most frontier generative chat models?', options: ['Encoder-only', 'Decoder-only', 'Encoder–decoder only', 'Pure RNN'], answer: 1, explanation: 'GPT-style decoder-only transformers (often with MoE) dominate generative LLMs.' },
+    { id: 'w5q2', type: 'numeric', prompt: 'Estimate the non-embedding parameters of a transformer with 32 layers and d_model = 4096 (use 12·N·d²). Answer in billions.', answer: 6.44, tolerance: 0.03, unit: 'B', explanation: '12 · 32 · 4096² = 6.44B — the core of a "7B" model once embeddings are added.' },
+    { id: 'w5q3', type: 'mcq', prompt: 'In a pre-norm block, normalization is applied:', options: ['After the residual addition', 'To the input of each sublayer, before attention/FFN', 'Only at the very end', 'Only to embeddings'], answer: 1, explanation: 'x + Sublayer(Norm(x)).' },
+    { id: 'w5q4', type: 'mcq', prompt: 'Without any positional information, a transformer would treat "dog bites man" and "man bites dog" as:', options: ['Different, because of the causal mask only', 'Indistinguishable bags of tokens (for bidirectional attention)', 'Different because of tokenization', 'Errors'], answer: 1, explanation: 'Attention is permutation-equivariant; position must be injected. (A causal mask leaks some order information, but explicit positions are still standard.)' },
+    { id: 'w5q5', type: 'mcq', prompt: 'An MoE model has 8 experts per layer and routes each token to 2. Compared with a dense model of the same total size, per-token FFN compute is roughly:', options: ['The same', '2/8 = 25%', '8×', '2×'], answer: 1, explanation: 'Only 2 of 8 experts run per token.' },
+    { id: 'w5q6', type: 'multi', prompt: 'Which statements about RoPE are correct? (select all)', options: ['It encodes relative position via rotations of q and k', 'It is added to the token embeddings like sinusoidal encodings', 'It is used by many modern LLMs', 'Context length can be extended by rescaling its frequencies'], answer: [0, 2, 3], explanation: 'RoPE rotates queries/keys inside attention rather than being added to embeddings.' },
+    { id: 'w5q7', type: 'mcq', prompt: 'For a training sequence of T tokens, how many next-token predictions contribute to the loss in one forward pass?', options: ['1', 'T − 1 (all positions in parallel)', 'log T', 'T²'], answer: 1, explanation: 'Every position predicts its successor simultaneously thanks to the causal mask.' },
+    { id: 'w5q8', type: 'mcq', prompt: 'Induction heads are associated with:', options: ['Tokenization', 'In-context learning — copying patterns seen earlier in the context', 'Weight decay', 'Quantization'], answer: 1, explanation: 'They complete [A][B] … [A] → [B].' },
+    { id: 'w5q9', type: 'numeric', prompt: 'Embedding parameters for vocab = 128,000 and d_model = 4096, in millions? (untied input embeddings only)', answer: 524.3, tolerance: 0.02, unit: 'M', explanation: '128,000 × 4096 = 524.3M.' },
+    { id: 'w5q10', type: 'mcq', prompt: 'Weight tying in a language model means:', options: ['All layers share weights', 'The output projection reuses the input embedding matrix', 'Q, K and V share weights', 'Gradients are tied to zero'], answer: 1, explanation: 'logits = h · Eᵀ.' },
+    { id: 'w5q11', type: 'short', prompt: 'Explain three reasons the transformer displaced recurrent networks for language modeling.', rubric: ['Training parallelism across sequence positions (GPU utilization)', 'Constant path length between any two tokens / better long-range dependencies', 'Predictable scaling with more data/compute/parameters', 'Any additional valid reason (e.g. generality across modalities, dense supervision at every position)'], modelAnswer: 'First, transformers process all positions of a training sequence in parallel (with a causal mask), while RNNs must step sequentially, so transformers use accelerators far more efficiently. Second, attention connects any two tokens in one hop, avoiding the fixed-size hidden-state bottleneck and vanishing gradients over long ranges. Third, their performance improves smoothly and predictably as parameters, data and compute grow, which justified huge investments in scaling. They also generalize across modalities with the same block.', explanation: 'A classic interview question.' },
+  ],
+};
+
+export default week;
